@@ -183,7 +183,7 @@ document.getElementById('slack-btn').addEventListener('click', async () => {
       return;
     }
     output.style.color = 'green';
-    output.textContent = '✅ Sent to Slack!';
+    output.textContent = 'Sent to Slack!';
   });
 });
 
