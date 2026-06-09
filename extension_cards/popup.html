@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { width: 360px; font-family: Arial, sans-serif; padding: 12px; font-size: 13px; }
+    h3 { margin: 0 0 10px; }
+    .field { margin-bottom: 6px; }
+    .field label { font-weight: bold; display: block; margin-bottom: 2px; }
+    .field span { color: #333; }
+    .input-field { margin-bottom: 8px; }
+    .input-field label { font-weight: bold; display: block; margin-bottom: 2px; }
+    .input-field select, .input-field input, .input-field textarea { width: 100%; box-sizing: border-box; }
+    textarea { height: 50px; }
+    button { margin-top: 8px; padding: 6px 12px; cursor: pointer; }
+    #copy-btn { background: #2ea043; color: white; border: none; border-radius: 4px; }
+    #copy-btn:disabled { cursor: not-allowed; }
+    #status { margin-top: 8px; color: #d00; font-style: italic; }
+    #output { margin-top: 10px; white-space: pre-wrap; background: #f5f5f5; padding: 8px; border-radius: 4px; font-size: 12px; }
+    .chamber-select { margin-bottom: 12px; }
+    .chamber-select select { width: 100%; padding: 4px; }
+    #alias-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+    #alias-row input { flex: 1; padding: 4px; box-sizing: border-box; }
+    #alias-row label { font-weight: bold; display: block; margin-bottom: 2px; }
+    #alias-edit-btn { padding: 3px 8px; font-size: 11px; cursor: pointer; white-space: nowrap; margin-top: 0; }
+    #alias-required { color: red; font-size: 11px; margin-top: 2px; display: none; }
+  </style>
+</head>
+<body>
+  <h3>Chamber Walk Helper <a href="settings.html" style="font-size:11px; float:right;">&#9881; Settings</a></h3>
+  <div id="status"></div>
+
+  <div>
+    <label style="font-weight:bold;">Amazon Alias: <span style="color:red;">*</span></label>
+    <div id="alias-row">
+      <input type="text" id="amz-alias" placeholder="e.g. xaquan" />
+      <button id="alias-edit-btn" style="display:none;">Edit</button>
+    </div>
+    <div id="alias-required">Alias is required before sending.</div>
+  </div>
+
+  <div class="chamber-select">
+    <label style="font-weight:bold;">Select Chamber:</label>
+    <select id="chamber-dropdown"><option value="">-- Select Chamber --</option></select>
+  </div>
+
+  <div id="form" style="display:none;">
+    <div class="field"><label>Time of Audit:</label><span id="f-time"></span></div>
+    <div class="field"><label>Chamber:</label><span id="f-chamber"></span></div>
+    <div class="field"><label>LRU Being Tested:</label><span id="f-lru"></span></div>
+    <div class="field"><label>Chamber Status:</label><span id="f-chamberStatus"></span></div>
+    <div class="field"><label>WORM Status:</label><span id="f-wormStatus"></span></div>
+
+    <div class="input-field">
+      <label>KTE Status:</label>
+      <select id="f-kte"></select>
+    </div>
+    <div class="input-field">
+      <label>Temp Trend Matches Profile:</label>
+      <select id="f-temp"></select>
+    </div>
+
+    <div class="field"><label>Estimated Completion Time:</label><span id="f-completion"></span></div>
+
+    <div class="input-field">
+      <label>Issue Found:</label>
+      <select id="f-issue"></select>
+    </div>
+    <div class="input-field">
+      <label>Issue Details / SIM Link: <span id="issue-detail-required" style="color:red; display:none;">*</span></label>
+      <textarea id="f-issueDetail"></textarea>
+    </div>
+    <div class="input-field">
+      <label>Other Comments:</label>
+      <textarea id="f-comments"></textarea>
+    </div>
+
+    <button id="copy-btn">Copy to Clipboard</button>
+    <button id="slack-btn" style="background:#4a154b; color:white; border:none; border-radius:4px; margin-left:6px;">Send to Slack</button>
+    <div id="output"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

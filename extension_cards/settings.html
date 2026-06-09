@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { width: 360px; font-family: Arial, sans-serif; padding: 12px; font-size: 13px; }
+    h3 { margin: 0 0 12px; }
+    .section { margin-bottom: 14px; }
+    .section label { font-weight: bold; display: block; margin-bottom: 4px; }
+    .section textarea { width: 100%; height: 60px; box-sizing: border-box; }
+    .section input { width: 100%; box-sizing: border-box; }
+    .hint { font-size: 11px; color: #666; margin-bottom: 4px; }
+    button { padding: 6px 12px; cursor: pointer; border: none; border-radius: 4px; }
+    #save-btn { background: #0073bb; color: white; }
+    #back-btn { background: #666; color: white; margin-left: 6px; }
+    #status { margin-top: 8px; color: green; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h3>Settings</h3>
+
+  <div class="section">
+    <label>Slack Workflow Webhook URL:</label>
+    <div class="hint">https://hooks.slack.com/workflows/...</div>
+    <input type="text" id="s-slack-webhook" placeholder="https://hooks.slack.com/workflows/...">
+  </div>
+
+  <div class="section">
+    <label>KTE Status Options:</label>
+    <div class="hint">One option per line</div>
+    <textarea id="s-kte"></textarea>
+  </div>
+
+  <div class="section">
+    <label>Temp Trend Matches Profile Options:</label>
+    <div class="hint">One option per line</div>
+    <textarea id="s-temp"></textarea>
+  </div>
+
+  <div class="section">
+    <label>Issue Found Options:</label>
+    <div class="hint">One option per line</div>
+    <textarea id="s-issue"></textarea>
+  </div>
+
+  <button id="save-btn">Save</button>
+  <button id="back-btn">Back</button>
+  <div id="status"></div>
+
+  <script src="settings.js"></script>
+</body>
+</html>

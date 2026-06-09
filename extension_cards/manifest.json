@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Chamber Walk Helper - Cards",
+  "version": "1.0",
+  "description": "Extracts chamber data from MSE WORM Work Centers card view",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://hooks.slack.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://ui.prod.console.mse.kuiper.amazon.dev/tools/worm/work-centers*"],
+      "js": ["content.js"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}
