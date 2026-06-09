@@ -10,6 +10,12 @@
   "host_permissions": [
     "https://hooks.slack.com/*"
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["settings.json"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "content_scripts": [
     {
       "matches": ["https://ui.prod.console.mse.kuiper.amazon.dev/tools/worm/work-centers*"],

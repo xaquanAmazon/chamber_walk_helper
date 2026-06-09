@@ -4,40 +4,28 @@ const DEFAULTS = {
   issueOptions: ['NO', 'YES', 'NA']
 };
 
-// Alias logic — required, disable after set, edit button to unlock
+// Alias — loaded from settings, always locked, Edit opens settings page
 const aliasInput = document.getElementById('amz-alias');
 const aliasEditBtn = document.getElementById('alias-edit-btn');
 const aliasRequired = document.getElementById('alias-required');
 
-function lockAlias() {
-  aliasInput.disabled = true;
-  aliasEditBtn.style.display = 'inline-block';
-}
-
-function unlockAlias() {
-  aliasInput.disabled = false;
-  aliasEditBtn.style.display = 'none';
-  aliasInput.focus();
-}
-
 chrome.storage.local.get(['amzAlias'], ({ amzAlias }) => {
   if (amzAlias) {
     aliasInput.value = amzAlias;
-    lockAlias();
+    aliasInput.disabled = true;
+    aliasEditBtn.style.display = 'inline-block';
+  } else {
+    // No alias set — prompt user to go to settings
+    aliasInput.disabled = true;
+    aliasInput.placeholder = 'Set in Settings';
+    aliasEditBtn.textContent = 'Set';
+    aliasEditBtn.style.display = 'inline-block';
   }
 });
 
-aliasInput.addEventListener('change', () => {
-  const val = aliasInput.value.trim();
-  if (val) {
-    chrome.storage.local.set({ amzAlias: val });
-    lockAlias();
-    aliasRequired.style.display = 'none';
-  }
-});
-
+// Edit/Set button always opens settings page
 aliasEditBtn.addEventListener('click', () => {
-  unlockAlias();
+  window.location.href = 'settings.html';
 });
 
 let formValid = false;

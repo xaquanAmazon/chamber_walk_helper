@@ -4,25 +4,51 @@
   <style>
     body { width: 360px; font-family: Arial, sans-serif; padding: 12px; font-size: 13px; }
     h3 { margin: 0 0 12px; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 14px 0; }
     .section { margin-bottom: 14px; }
     .section label { font-weight: bold; display: block; margin-bottom: 4px; }
     .section textarea { width: 100%; height: 60px; box-sizing: border-box; }
-    .section input { width: 100%; box-sizing: border-box; }
+    .section input { width: 100%; box-sizing: border-box; padding: 4px; }
     .hint { font-size: 11px; color: #666; margin-bottom: 4px; }
-    button { padding: 6px 12px; cursor: pointer; border: none; border-radius: 4px; }
+    .required { color: red; }
+    .error { font-size: 11px; color: red; margin-top: 3px; display: none; }
+    button { padding: 6px 12px; cursor: pointer; border: none; border-radius: 4px; margin-top: 4px; }
     #save-btn { background: #0073bb; color: white; }
     #back-btn { background: #666; color: white; margin-left: 6px; }
     #status { margin-top: 8px; color: green; font-style: italic; }
+    .section-title { font-size: 12px; font-weight: bold; color: #555; text-transform: uppercase;
+                     letter-spacing: 0.5px; margin-bottom: 10px; }
   </style>
 </head>
 <body>
   <h3>Settings</h3>
 
+  <!-- Identity -->
+  <div class="section-title">Identity</div>
+
   <div class="section">
-    <label>Slack Workflow Webhook URL:</label>
-    <div class="hint">https://hooks.slack.com/workflows/...</div>
-    <input type="text" id="s-slack-webhook" placeholder="https://hooks.slack.com/workflows/...">
+    <label>Amazon Alias: <span class="required">*</span></label>
+    <div class="hint">Your Amazon login alias (e.g. xaquan)</div>
+    <input type="text" id="s-amz-alias" placeholder="e.g. xaquan" />
+    <div class="error" id="err-alias">Alias is required.</div>
   </div>
+
+  <hr>
+
+  <!-- Slack -->
+  <div class="section-title">Slack</div>
+
+  <div class="section">
+    <label>Workflow Webhook URL: <span class="required">*</span></label>
+    <div class="hint">https://hooks.slack.com/triggers/...</div>
+    <input type="text" id="s-slack-webhook" placeholder="https://hooks.slack.com/triggers/..." />
+    <div class="error" id="err-webhook">Webhook URL is required.</div>
+  </div>
+
+  <hr>
+
+  <!-- Dropdown Options -->
+  <div class="section-title">Dropdown Options</div>
 
   <div class="section">
     <label>KTE Status Options:</label>

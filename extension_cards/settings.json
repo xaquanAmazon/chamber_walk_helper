@@ -1,0 +1,21 @@
+{
+  "slackWebhook": "https://hooks.slack.com/triggers/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",
+  "kteOptions": [
+    "Running",
+    "Passed",
+    "Failed",
+    "Terminated",
+    "NA",
+    "Completed with some failures"
+  ],
+  "tempOptions": [
+    "Yes",
+    "No",
+    "NA"
+  ],
+  "issueOptions": [
+    "NO",
+    "YES",
+    "NA"
+  ]
+}
