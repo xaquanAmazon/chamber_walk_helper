@@ -14,6 +14,7 @@
     button { margin-top: 8px; padding: 6px 12px; cursor: pointer; }
     #copy-btn { background: #2ea043; color: white; border: none; border-radius: 4px; }
     #copy-btn:disabled { cursor: not-allowed; }
+    #slack-btn:disabled { cursor: not-allowed; }
     #status { margin-top: 8px; color: #d00; font-style: italic; }
     #output { margin-top: 10px; white-space: pre-wrap; background: #f5f5f5; padding: 8px; border-radius: 4px; font-size: 12px; }
     .chamber-select { margin-bottom: 12px; }
@@ -44,8 +45,10 @@
   </div>
 
   <div id="form" style="display:none;">
-    <div class="field"><label>Time of Audit:</label><span id="f-time"></span></div>
+    <div class="field" style="display:none;"><label>Time of Audit:</label><span id="f-time"></span></div>
     <div class="field"><label>Chamber:</label><span id="f-chamber"></span></div>
+    <div class="field" style="display:none;"><label>Chamber Group:</label><span id="f-chamberGroup"></span></div>
+    <div class="field"><label>Work Request ID:</label><span id="f-wrId"></span></div>
     <div class="field"><label>LRU Being Tested:</label><span id="f-lru"></span></div>
     <div class="field"><label>Chamber Status:</label><span id="f-chamberStatus"></span></div>
     <div class="field"><label>WORM Status:</label><span id="f-wormStatus"></span></div>

@@ -7,6 +7,14 @@ function extractCards() {
   const expandedPanels = document.querySelectorAll('[class*="content-expanded"]');
 
   for (const panel of expandedPanels) {
+    // Get card group name (e.g. MDTV, LGTV, HASS) from the work-center card header
+    let cardGroup = '';
+    const workCenterCard = panel.closest('[data-testid="work-center-card"]');
+    if (workCenterCard) {
+      const h4 = workCenterCard.querySelector('h4');
+      if (h4) cardGroup = h4.textContent.trim();
+    }
+
     const kioskButtons = panel.querySelectorAll('button[aria-label^="Open kiosk view"]');
 
     for (const btn of kioskButtons) {
@@ -75,7 +83,7 @@ function extractCards() {
         }
       }
 
-      cards.push({ chamberId, wrId, workType, partType, statusEvent, etc, idle: !wrId, idleTime });
+      cards.push({ chamberId, cardGroup, wrId, workType, partType, statusEvent, etc, idle: !wrId, idleTime });
     }
   }
 

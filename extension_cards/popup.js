@@ -42,14 +42,18 @@ function validateForm() {
 
   formValid = kte !== '' && temp !== '' && issue !== '' && (!issueDetailRequired || issueDetail !== '');
   const copyBtn = document.getElementById('copy-btn');
+  const slackBtn = document.getElementById('slack-btn');
   copyBtn.disabled = !formValid;
   copyBtn.style.opacity = formValid ? '1' : '0.5';
+  slackBtn.disabled = !formValid;
+  slackBtn.style.opacity = formValid ? '1' : '0.5';
 }
 
 function getPayload() {
   return {
     time_of_audit:        document.getElementById('f-time').textContent,
     chamber:              document.getElementById('f-chamber').textContent,
+    chamber_group:        document.getElementById('f-chamberGroup').textContent,
     lru_being_tested:     document.getElementById('f-lru').textContent,
     chamber_status:       document.getElementById('f-chamberStatus').textContent,
     worm_status:          document.getElementById('f-wormStatus').textContent,
@@ -61,7 +65,8 @@ function getPayload() {
     other_comments:       document.getElementById('f-comments').value || 'N/A',
     amz_alias:            document.getElementById('amz-alias').value.trim()
                             ? document.getElementById('amz-alias').value.trim() + '@amazon.com'
-                            : 'N/A'
+                            : 'N/A',
+    wr_id:                document.getElementById('f-wrId').textContent || 'N/A'
   };
 }
 
@@ -141,6 +146,8 @@ document.getElementById('chamber-dropdown').addEventListener('change', (e) => {
   document.getElementById('form').style.display = 'block';
   document.getElementById('f-time').textContent = now;
   document.getElementById('f-chamber').textContent = card.chamberId;
+  document.getElementById('f-chamberGroup').textContent = card.cardGroup || 'N/A';
+  document.getElementById('f-wrId').textContent = card.wrId || 'N/A';
   document.getElementById('f-lru').textContent = card.idle ? 'N/A' : card.partType;
   document.getElementById('f-chamberStatus').textContent = card.idle ? 'IDLE' : card.workType;
   document.getElementById('f-wormStatus').textContent = card.idle ? 'IDLE' : card.statusEvent;
@@ -180,8 +187,11 @@ document.getElementById('copy-btn').addEventListener('click', async () => {
   if (!formValid) return;
 
   const fields = [
+    ['Alias', '@' + (document.getElementById('amz-alias').value.trim() || 'N/A')],
     ['Time of Audit', document.getElementById('f-time').textContent],
+    ['Chamber Group', document.getElementById('f-chamberGroup').textContent],
     ['Chamber', document.getElementById('f-chamber').textContent],
+    ['Work Request ID', document.getElementById('f-wrId').textContent],
     ['LRU Being Tested', document.getElementById('f-lru').textContent],
     ['Chamber Status', document.getElementById('f-chamberStatus').textContent],
     ['WORM Status', document.getElementById('f-wormStatus').textContent],
@@ -189,7 +199,7 @@ document.getElementById('copy-btn').addEventListener('click', async () => {
     ['Temp Trend Matches Profile', document.getElementById('f-temp').value],
     ['Estimated Completion Time', document.getElementById('f-completion').textContent],
     ['Issue Found', document.getElementById('f-issue').value],
-    ['If YES, List Issue Details and SIM Ticket Link', document.getElementById('f-issueDetail').value],
+    ['Issue Details and SIM Ticket Link', document.getElementById('f-issueDetail').value],
     ['Other Comments', document.getElementById('f-comments').value]
   ];
 
