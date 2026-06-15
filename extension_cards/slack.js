@@ -1,26 +1,18 @@
+// Chamber Walk Helper — Slack Webhook
+
+// NOTE: No Content-Type header — Slack Workflow Webhooks (/triggers/...) reject it.
+// Omitting it sends a simple request (no CORS preflight) which Slack accepts.
+
 async function sendChamberAudit(webhookUrl, data) {
-  console.log(data)
+  console.log('[slack.js] sending payload:', data);
+
   const response = await fetch(webhookUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      time_of_audit:        data.time_of_audit,
-      chamber:              data.chamber,
-      chamber_group:        data.chamber_group,
-      lru_being_tested:     data.lru_being_tested,
-      chamber_status:       data.chamber_status,
-      worm_status:          data.worm_status,
-      kte_status:           data.kte_status,
-      temp_trend:           data.temp_trend,
-      estimated_completion: data.estimated_completion,
-      issue_found:          data.issue_found,
-      issue_details:        data.issue_details,
-      other_comments:       data.other_comments,
-      amz_alias:            data.amz_alias,
-      wr_id:                data.wr_id
-    })
+    body: JSON.stringify(data),
   });
-  console.log(response.text())
-  console.log(response.status === 200 ? '✅ Sent to Slack!' : '❌ Failed: ' + response.status);
+
+  const body = await response.text();
+  console.log(`[slack.js] status: ${response.status} | body: ${body}`);
+
   return { ok: response.status === 200, status: response.status };
 }

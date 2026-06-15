@@ -1,161 +1,173 @@
+// Chamber Walk Helper — Popup Script
+// NOTE: Requires <meta charset="UTF-8"> in popup.html for emoji/special chars to render correctly.
+
 const DEFAULTS = {
-  kteOptions: ['Running', 'Passed', 'Failed', 'Terminated', 'NA', 'Completed with some failures'],
-  tempOptions: ['Yes', 'No', 'NA'],
-  issueOptions: ['NO', 'YES', 'NA']
+  kteOptions:   ['Running', 'Passed', 'Failed', 'Terminated', 'NA', 'Completed with some failures'],
+  tempOptions:  ['Yes', 'No', 'NA'],
+  issueOptions: ['NO', 'YES', 'NA'],
 };
 
-// Alias — loaded from settings, always locked, Edit opens settings page
-const aliasInput = document.getElementById('amz-alias');
-const aliasEditBtn = document.getElementById('alias-edit-btn');
-const aliasRequired = document.getElementById('alias-required');
+const TARGET_URL = 'https://ui.prod.console.mse.kuiper.amazon.dev/tools/worm/work-centers';
+
+// ── DOM refs ───────────────────────────────────────────────────────────────
+
+const $ = id => document.getElementById(id);
+
+const aliasInput   = $('amz-alias');
+const aliasEditBtn = $('alias-edit-btn');
+const aliasRequired = $('alias-required');
+const output       = $('output');
+const statusEl     = $('status');
+
+// ── State ──────────────────────────────────────────────────────────────────
+
+let formValid = false;
+let cardsData = [];
+let activeTabId = null;
+
+// ── Alias ──────────────────────────────────────────────────────────────────
 
 chrome.storage.local.get(['amzAlias'], ({ amzAlias }) => {
+  aliasInput.disabled = true;
+  aliasEditBtn.style.display = 'inline-block';
   if (amzAlias) {
     aliasInput.value = amzAlias;
-    aliasInput.disabled = true;
-    aliasEditBtn.style.display = 'inline-block';
   } else {
-    // No alias set — prompt user to go to settings
-    aliasInput.disabled = true;
     aliasInput.placeholder = 'Set in Settings';
     aliasEditBtn.textContent = 'Set';
-    aliasEditBtn.style.display = 'inline-block';
   }
 });
 
-// Edit/Set button always opens settings page
 aliasEditBtn.addEventListener('click', () => {
   window.location.href = 'settings.html';
 });
 
-let formValid = false;
-let cardsData = [];
+// ── Form validation ────────────────────────────────────────────────────────
 
 function validateForm() {
-  const kte = document.getElementById('f-kte').value;
-  const temp = document.getElementById('f-temp').value;
-  const issue = document.getElementById('f-issue').value;
-  const issueDetail = document.getElementById('f-issueDetail').value.trim();
-  const issueDetailRequired = issue === 'YES';
+  const issueVal = $('f-issue').value;
+  const issueDetailRequired = issueVal === 'YES';
+  const issueDetailFilled = $('f-issueDetail').value.trim() !== '';
 
-  document.getElementById('issue-detail-required').style.display = issueDetailRequired ? 'inline' : 'none';
+  $('issue-detail-required').style.display = issueDetailRequired ? 'inline' : 'none';
 
-  formValid = kte !== '' && temp !== '' && issue !== '' && (!issueDetailRequired || issueDetail !== '');
-  const copyBtn = document.getElementById('copy-btn');
-  const slackBtn = document.getElementById('slack-btn');
-  copyBtn.disabled = !formValid;
-  copyBtn.style.opacity = formValid ? '1' : '0.5';
-  slackBtn.disabled = !formValid;
-  slackBtn.style.opacity = formValid ? '1' : '0.5';
+  formValid = $('f-kte').value !== ''
+    && $('f-temp').value !== ''
+    && issueVal !== ''
+    && (!issueDetailRequired || issueDetailFilled);
+
+  [$('copy-btn'), $('slack-btn')].forEach(btn => {
+    btn.disabled = !formValid;
+    btn.style.opacity = formValid ? '1' : '0.5';
+  });
 }
 
+// ── Payload ────────────────────────────────────────────────────────────────
+
 function getPayload() {
+  const alias = aliasInput.value.trim();
   return {
-    time_of_audit:        document.getElementById('f-time').textContent,
-    chamber:              document.getElementById('f-chamber').textContent,
-    chamber_group:        document.getElementById('f-chamberGroup').textContent,
-    lru_being_tested:     document.getElementById('f-lru').textContent,
-    chamber_status:       document.getElementById('f-chamberStatus').textContent,
-    worm_status:          document.getElementById('f-wormStatus').textContent,
-    kte_status:           document.getElementById('f-kte').value,
-    temp_trend:           document.getElementById('f-temp').value,
-    estimated_completion: document.getElementById('f-completion').textContent,
-    issue_found:          document.getElementById('f-issue').value,
-    issue_details:        document.getElementById('f-issueDetail').value || 'N/A',
-    other_comments:       document.getElementById('f-comments').value || 'N/A',
-    amz_alias:            document.getElementById('amz-alias').value.trim()
-                            ? document.getElementById('amz-alias').value.trim() + '@amazon.com'
-                            : 'N/A',
-    wr_id:                document.getElementById('f-wrId').textContent || 'N/A'
+    time_of_audit:        $('f-time').textContent,
+    chamber:              $('f-chamber').textContent,
+    chamber_group:        $('f-chamberGroup').textContent,
+    wr_id:                $('f-wrId').textContent,
+    lru_being_tested:     $('f-lru').textContent,
+    chamber_status:       $('f-chamberStatus').textContent,
+    worm_status:          $('f-wormStatus').textContent,
+    kte_status:           $('f-kte').value,
+    temp_trend:           $('f-temp').value,
+    estimated_completion: $('f-completion').textContent,
+    issue_found:          $('f-issue').value,
+    issue_details:        $('f-issueDetail').value || 'N/A',
+    other_comments:       $('f-comments').value   || 'N/A',
+    amz_alias:            alias ? alias + '@amazon.com' : 'N/A',
   };
 }
 
-// Load dropdown options
+// ── Dropdowns ──────────────────────────────────────────────────────────────
+
+function populateSelect(selId, options) {
+  const sel = $(selId);
+  sel.add(new Option('-- Select --', ''));
+  options.forEach(o => sel.add(new Option(o, o)));
+  sel.addEventListener('change', validateForm);
+}
+
 chrome.storage.local.get(['kteOptions', 'tempOptions', 'issueOptions'], (data) => {
-  const kteOpts = data.kteOptions || DEFAULTS.kteOptions;
-  const tempOpts = data.tempOptions || DEFAULTS.tempOptions;
-  const issueOpts = data.issueOptions || DEFAULTS.issueOptions;
-  const kteSel = document.getElementById('f-kte');
-  const tempSel = document.getElementById('f-temp');
-  const issueSel = document.getElementById('f-issue');
-
-  kteSel.add(new Option('-- Select --', ''));
-  kteOpts.forEach(o => kteSel.add(new Option(o, o)));
-  tempSel.add(new Option('-- Select --', ''));
-  tempOpts.forEach(o => tempSel.add(new Option(o, o)));
-  issueSel.add(new Option('-- Select --', ''));
-  issueOpts.forEach(o => issueSel.add(new Option(o, o)));
-
-  kteSel.addEventListener('change', validateForm);
-  tempSel.addEventListener('change', validateForm);
-  issueSel.addEventListener('change', validateForm);
-  document.getElementById('f-issueDetail').addEventListener('input', validateForm);
+  populateSelect('f-kte',   data.kteOptions   || DEFAULTS.kteOptions);
+  populateSelect('f-temp',  data.tempOptions  || DEFAULTS.tempOptions);
+  populateSelect('f-issue', data.issueOptions || DEFAULTS.issueOptions);
+  $('f-issueDetail').addEventListener('input', validateForm);
   validateForm();
 });
 
-// Fetch cards from content script
+// ── Card loading ───────────────────────────────────────────────────────────
+
 (async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const target = 'https://ui.prod.console.mse.kuiper.amazon.dev/tools/worm/work-centers';
 
-  if (!tab.url.startsWith(target)) {
-    document.getElementById('status').textContent = 'Not on WORM Work Centers page.';
+  if (!tab.url.startsWith(TARGET_URL)) {
+    statusEl.textContent = 'Not on WORM Work Centers page.';
     return;
   }
 
-  await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+  activeTabId = tab.id;
+  await chrome.scripting.executeScript({ target: { tabId: activeTabId }, files: ['content.js'] });
 
-  chrome.tabs.sendMessage(tab.id, { action: 'getCards' }, (response) => {
+  chrome.tabs.sendMessage(activeTabId, { action: 'getCards' }, (response) => {
     if (chrome.runtime.lastError || !response?.cards?.length) {
-      document.getElementById('status').textContent = 'No chamber cards found. Expand a chamber group first.';
+      statusEl.textContent = 'No chamber cards found. Expand a chamber group first.';
       return;
     }
 
     cardsData = response.cards;
-    const dropdown = document.getElementById('chamber-dropdown');
+    const dropdown = $('chamber-dropdown');
     cardsData.forEach((card, i) => {
-      const label = card.idle ? `${card.chamberId} - IDLE` : `${card.chamberId} - ${card.wrId}`;
+      const label = card.idle
+        ? `${card.chamberId} - IDLE`
+        : `${card.chamberId} - ${card.wrId}`;
       dropdown.add(new Option(label, i));
     });
   });
 })();
 
-// Select chamber
-document.getElementById('chamber-dropdown').addEventListener('change', (e) => {
+// ── Chamber selection ──────────────────────────────────────────────────────
+
+function resetForm() {
+  ['f-kte', 'f-temp', 'f-issue'].forEach(id => $(id).value = '');
+  $('f-issueDetail').value = '';
+  $('f-comments').value = '';
+  $('issue-detail-required').style.display = 'none';
+  output.textContent = '';
+  validateForm();
+}
+
+$('chamber-dropdown').addEventListener('change', (e) => {
   const idx = e.target.value;
-  if (idx === '') {
-    document.getElementById('form').style.display = 'none';
-    return;
-  }
+  if (idx === '') { $('form').style.display = 'none'; return; }
 
   const card = cardsData[idx];
-  const now = new Date().toLocaleString('en-US', {
+  const now  = new Date().toLocaleString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
-    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true,
   });
 
-  document.getElementById('f-kte').value = '';
-  document.getElementById('f-temp').value = '';
-  document.getElementById('f-issue').value = '';
-  document.getElementById('f-issueDetail').value = '';
-  document.getElementById('f-comments').value = '';
-  document.getElementById('issue-detail-required').style.display = 'none';
-  document.getElementById('output').textContent = '';
-  validateForm();
+  resetForm();
+  $('form').style.display = 'block';
 
-  document.getElementById('form').style.display = 'block';
-  document.getElementById('f-time').textContent = now;
-  document.getElementById('f-chamber').textContent = card.chamberId;
-  document.getElementById('f-chamberGroup').textContent = card.cardGroup || 'N/A';
-  document.getElementById('f-wrId').textContent = card.wrId || 'N/A';
-  document.getElementById('f-lru').textContent = card.idle ? 'N/A' : card.partType;
-  document.getElementById('f-chamberStatus').textContent = card.idle ? 'IDLE' : card.workType;
-  document.getElementById('f-wormStatus').textContent = card.idle ? 'IDLE' : card.statusEvent;
-  document.getElementById('f-completion').textContent = card.idle ? 'N/A' : card.etc;
+  $('f-time').textContent         = now;
+  $('f-chamber').textContent      = card.chamberId;
+  $('f-chamberGroup').textContent = card.cardGroup  || 'N/A';
+  $('f-wrId').textContent         = card.wrId       || 'N/A';
+  $('f-lru').textContent          = card.idle ? 'N/A'  : card.partType;
+  $('f-chamberStatus').textContent = card.idle ? 'IDLE' : card.workType;
+  $('f-wormStatus').textContent   = card.idle ? 'IDLE' : card.statusEvent;
+  $('f-completion').textContent   = card.idle ? 'N/A'  : card.etc;
 });
 
-// Send to Slack (logs to background)
-document.getElementById('slack-btn').addEventListener('click', async () => {
+// ── Send to Slack ──────────────────────────────────────────────────────────
+
+$('slack-btn').addEventListener('click', async () => {
   if (!formValid) return;
 
   if (!aliasInput.value.trim()) {
@@ -165,53 +177,51 @@ document.getElementById('slack-btn').addEventListener('click', async () => {
     return;
   }
 
-  const payload = getPayload();
-  const output = document.getElementById('output');
+  // Wake up service worker
+  await chrome.scripting.executeScript({ target: { tabId: activeTabId }, func: () => {} });
 
-  // Wake up service worker then send
-  await chrome.scripting.executeScript({ target: { tabId: (await chrome.tabs.query({ active: true, currentWindow: true }))[0].id }, func: () => {} });
-
-  chrome.runtime.sendMessage({ action: 'logAudit', data: payload }, () => {
+  chrome.runtime.sendMessage({ action: 'logAudit', data: getPayload() }, () => {
     if (chrome.runtime.lastError) {
       output.style.color = 'red';
       output.textContent = '❌ Error: ' + chrome.runtime.lastError.message;
       return;
     }
     output.style.color = 'green';
-    output.textContent = 'Sent to Slack!';
+    output.textContent = '✅ Sent to Slack!';
   });
 });
 
-// Copy to clipboard
-document.getElementById('copy-btn').addEventListener('click', async () => {
+// ── Copy to clipboard ──────────────────────────────────────────────────────
+
+$('copy-btn').addEventListener('click', async () => {
   if (!formValid) return;
 
+  const p = getPayload();
   const fields = [
-    ['Alias', '@' + (document.getElementById('amz-alias').value.trim() || 'N/A')],
-    ['Time of Audit', document.getElementById('f-time').textContent],
-    ['Chamber Group', document.getElementById('f-chamberGroup').textContent],
-    ['Chamber', document.getElementById('f-chamber').textContent],
-    ['Work Request ID', document.getElementById('f-wrId').textContent],
-    ['LRU Being Tested', document.getElementById('f-lru').textContent],
-    ['Chamber Status', document.getElementById('f-chamberStatus').textContent],
-    ['WORM Status', document.getElementById('f-wormStatus').textContent],
-    ['KTE Status', document.getElementById('f-kte').value],
-    ['Temp Trend Matches Profile', document.getElementById('f-temp').value],
-    ['Estimated Completion Time', document.getElementById('f-completion').textContent],
-    ['Issue Found', document.getElementById('f-issue').value],
-    ['Issue Details and SIM Ticket Link', document.getElementById('f-issueDetail').value],
-    ['Other Comments', document.getElementById('f-comments').value]
+    ['Alias',                                    '@' + aliasInput.value.trim()],
+    ['Time of Audit',                            p.time_of_audit],
+    ['Chamber Group',                            p.chamber_group],
+    ['Chamber',                                  p.chamber],
+    ['Work Request ID',                          p.wr_id],
+    ['LRU Being Tested',                         p.lru_being_tested],
+    ['Chamber Status',                           p.chamber_status],
+    ['WORM Status',                              p.worm_status],
+    ['KTE Status',                               p.kte_status],
+    ['Temp Trend Matches Profile',               p.temp_trend],
+    ['Estimated Completion Time',                p.estimated_completion],
+    ['Issue Found',                              p.issue_found],
+    ['Issue Details and SIM Ticket Link',        p.issue_details],
+    ['Other Comments',                           p.other_comments],
   ];
 
   const plain = fields.map(([k, v]) => `${k}: ${v}`).join('\n');
-  const html = fields.map(([k, v]) => `<b>${k}:</b> ${v.replace(/\n/g, '<br>')}`).join('<br>');
+  const html  = fields.map(([k, v]) => `<b>${k}:</b> ${v.replace(/\n/g, '<br>')}`).join('<br>');
 
   await navigator.clipboard.write([new ClipboardItem({
-    'text/html': new Blob([html], { type: 'text/html' }),
-    'text/plain': new Blob([plain], { type: 'text/plain' })
+    'text/html':  new Blob([html],  { type: 'text/html' }),
+    'text/plain': new Blob([plain], { type: 'text/plain' }),
   })]);
 
-  console.log('[Chamber Walk] Audit Data:', getPayload());
-
-  document.getElementById('output').textContent = plain;
+  output.style.color = '#333';
+  output.textContent = plain;
 });

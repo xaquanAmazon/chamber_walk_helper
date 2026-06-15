@@ -1,99 +1,104 @@
-// Chamber Walk Helper Cards - Content Script
+// Chamber Walk Helper — Content Script
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+/** First <h5> whose parent also contains a <small> → the chamber ID label */
+function extractChamberId(cardEl) {
+  for (const h5 of cardEl.querySelectorAll('h5')) {
+    if (h5.parentElement?.querySelector('small'))
+      return h5.textContent.trim();
+  }
+  return '';
+}
+
+/** Second <h5> that isn't the chamber ID and has no <small> sibling → part type */
+function extractPartType(cardEl, chamberId) {
+  for (const h5 of cardEl.querySelectorAll('h5')) {
+    const text = h5.textContent.trim();
+    if (text !== chamberId && !h5.parentElement?.querySelector('small'))
+      return text;
+  }
+  return '';
+}
+
+/** Work type from "[MFG] [QTY" pattern */
+function extractWorkType(cardEl) {
+  const m = cardEl.textContent.match(/\[(\w+)\]\s*\[QTY/);
+  return m ? m[1] : '';
+}
+
+/** WR-XXXXXX from any <p> */
+function extractWrId(cardEl) {
+  for (const p of cardEl.querySelectorAll('p')) {
+    const m = p.textContent.match(/(WR-\d+)/);
+    if (m) return m[1];
+  }
+  return '';
+}
+
+/** First non-empty <span style*="text-overflow"> → status event */
+function extractStatusEvent(cardEl) {
+  for (const s of cardEl.querySelectorAll('span[style*="text-overflow"]')) {
+    const t = s.textContent.trim();
+    if (t) return t;
+  }
+  return '';
+}
+
+/** <span> starting with "ETC:" → strip prefix */
+function extractEtc(cardEl) {
+  for (const s of cardEl.querySelectorAll('span')) {
+    const t = s.textContent.trim();
+    if (t.startsWith('ETC:')) return t.replace('ETC:', '').trim();
+  }
+  return '';
+}
+
+/** Idle time — only when no WR: <span> matching "NNh NNm" */
+function extractIdleTime(cardEl) {
+  for (const s of cardEl.querySelectorAll('span')) {
+    const t = s.textContent.trim();
+    if (/^\d+h\s+\d+m/.test(t)) return t;
+  }
+  return '';
+}
+
+// ── Main extraction ────────────────────────────────────────────────────────
 
 function extractCards() {
   const cards = [];
 
-  // Only look inside expanded panels
-  const expandedPanels = document.querySelectorAll('[class*="content-expanded"]');
-
-  for (const panel of expandedPanels) {
-    // Get card group name (e.g. MDTV, LGTV, HASS) from the work-center card header
-    let cardGroup = '';
-    const workCenterCard = panel.closest('[data-testid="work-center-card"]');
-    if (workCenterCard) {
-      const h4 = workCenterCard.querySelector('h4');
-      if (h4) cardGroup = h4.textContent.trim();
-    }
-
-    const kioskButtons = panel.querySelectorAll('button[aria-label^="Open kiosk view"]');
-
-    for (const btn of kioskButtons) {
-      let cardEl = btn.closest('div[style*="border-color"]');
+  for (const panel of document.querySelectorAll('[class*="content-expanded"]')) {
+    for (const btn of panel.querySelectorAll('button[aria-label^="Open kiosk view"]')) {
+      const cardEl = btn.closest('div[style*="border-color"]');
       if (!cardEl) continue;
 
-      // Chamber ID
-      let chamberId = '';
-      const h5s = cardEl.querySelectorAll('h5');
-      for (const h5 of h5s) {
-        if (h5.parentElement?.querySelector('small')) {
-          chamberId = h5.textContent.trim();
-          break;
-        }
-      }
+      const chamberId = extractChamberId(cardEl);
       if (!chamberId) continue;
 
-      // Work Request Id
-      let wrId = '';
-      const ps = cardEl.querySelectorAll('p');
-      for (const p of ps) {
-        const match = p.textContent.match(/(WR-\d+)/);
-        if (match) { wrId = match[1]; break; }
-      }
+      const wrId = extractWrId(cardEl);
+      const idle = !wrId;
 
-      // Work Type
-      let workType = '';
-      const wtMatch = cardEl.textContent.match(/\[(\w+)\]\s*\[QTY/);
-      if (wtMatch) workType = wtMatch[1];
-
-      // Part Type
-      let partType = '';
-      for (const h5 of h5s) {
-        const text = h5.textContent.trim();
-        if (text !== chamberId && !h5.parentElement?.querySelector('small')) {
-          partType = text;
-          break;
-        }
-      }
-
-      // Status Event
-      let statusEvent = '';
-      const spans = cardEl.querySelectorAll('span[style*="text-overflow"]');
-      for (const s of spans) {
-        const t = s.textContent.trim();
-        if (t) { statusEvent = t; break; }
-      }
-
-      // ETC
-      let etc = '';
-      const allSpans = cardEl.querySelectorAll('span');
-      for (const s of allSpans) {
-        const t = s.textContent.trim();
-        if (t.startsWith('ETC:')) {
-          etc = t.replace('ETC:', '').trim();
-          break;
-        }
-      }
-
-      // Idle detection
-      let idleTime = '';
-      if (!wrId) {
-        for (const s of allSpans) {
-          const t = s.textContent.trim();
-          if (/^\d+h\s+\d+m/.test(t)) { idleTime = t; break; }
-        }
-      }
-
-      cards.push({ chamberId, cardGroup, wrId, workType, partType, statusEvent, etc, idle: !wrId, idleTime });
+      cards.push({
+        chamberId,
+        cardGroup:   chamberId.replace(/-\d+$/, ''), // e.g. "MDTV-02" → "MDTV"
+        wrId,
+        workType:    extractWorkType(cardEl),
+        partType:    extractPartType(cardEl, chamberId),
+        statusEvent: extractStatusEvent(cardEl),
+        etc:         extractEtc(cardEl),
+        idle,
+        idleTime:    idle ? extractIdleTime(cardEl) : '',
+      });
     }
   }
 
   return cards;
 }
 
+// ── Message listener ───────────────────────────────────────────────────────
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.action === 'getCards') {
-    const cards = extractCards();
-    sendResponse({ cards });
-  }
+  if (msg.action === 'getCards') sendResponse({ cards: extractCards() });
   return true;
 });
