@@ -13,19 +13,13 @@ const TARGET_URL = 'https://ui.prod.console.mse.kuiper.amazon.dev/tools/worm/wor
 
 const $ = id => document.getElementById(id);
 
-const aliasInput   = $('amz-alias');
-const aliasEditBtn = $('alias-edit-btn');
+const output   = $('output');
+const statusEl = $('status');
+const aliasInput    = $('amz-alias');
+const aliasEditBtn  = $('alias-edit-btn');
 const aliasRequired = $('alias-required');
-const output       = $('output');
-const statusEl     = $('status');
 
-// ── State ──────────────────────────────────────────────────────────────────
-
-let formValid = false;
-let cardsData = [];
-let activeTabId = null;
-
-// ── Alias ──────────────────────────────────────────────────────────────────
+// ── Alias — load from storage, locked, Edit opens settings ────────────────────────────
 
 chrome.storage.local.get(['amzAlias'], ({ amzAlias }) => {
   aliasInput.disabled = true;
@@ -33,7 +27,7 @@ chrome.storage.local.get(['amzAlias'], ({ amzAlias }) => {
   if (amzAlias) {
     aliasInput.value = amzAlias;
   } else {
-    aliasInput.placeholder = 'Set in Settings';
+    aliasInput.placeholder = 'Set alias in Settings';
     aliasEditBtn.textContent = 'Set';
   }
 });
@@ -41,6 +35,35 @@ chrome.storage.local.get(['amzAlias'], ({ amzAlias }) => {
 aliasEditBtn.addEventListener('click', () => {
   window.location.href = 'settings.html';
 });
+
+// ── State ──────────────────────────────────────────────────────────────────
+
+let formValid = false;
+let cardsData = [];
+let activeTabId = null;
+
+// ── Storage helpers ────────────────────────────────────────────────────────────
+
+/** Append one audit record to the persistent auditLog array in chrome.storage.local */
+function saveRecord(payload) {
+  chrome.storage.local.get(['auditLog'], ({ auditLog }) => {
+    const log = Array.isArray(auditLog) ? auditLog : [];
+    log.push({ ...payload, saved_at: new Date().toISOString() });
+    chrome.storage.local.set({ auditLog: log });
+  });
+}
+
+/** Persist the Log and Copy checkbox state so it survives popup close/reopen */
+function saveCheckboxState() {
+  chrome.storage.local.set({ logAndCopy: $('log-and-copy').checked });
+}
+
+/** Restore checkbox state on popup open */
+chrome.storage.local.get(['logAndCopy'], ({ logAndCopy }) => {
+  if (logAndCopy !== undefined) $('log-and-copy').checked = logAndCopy;
+});
+
+$('log-and-copy').addEventListener('change', saveCheckboxState);
 
 // ── Form validation ────────────────────────────────────────────────────────
 
@@ -56,7 +79,7 @@ function validateForm() {
     && issueVal !== ''
     && (!issueDetailRequired || issueDetailFilled);
 
-  [$('copy-btn'), $('slack-btn')].forEach(btn => {
+  [$('copy-btn'), $('log-btn')].forEach(btn => {
     btn.disabled = !formValid;
     btn.style.opacity = formValid ? '1' : '0.5';
   });
@@ -167,7 +190,7 @@ $('chamber-dropdown').addEventListener('change', (e) => {
 
 // ── Send to Slack ──────────────────────────────────────────────────────────
 
-$('slack-btn').addEventListener('click', async () => {
+$('log-btn').addEventListener('click', async () => {
   if (!formValid) return;
 
   if (!aliasInput.value.trim()) {
@@ -176,29 +199,39 @@ $('slack-btn').addEventListener('click', async () => {
     aliasInput.focus();
     return;
   }
+  aliasRequired.style.display = 'none';
 
   // Wake up service worker
   await chrome.scripting.executeScript({ target: { tabId: activeTabId }, func: () => {} });
 
-  chrome.runtime.sendMessage({ action: 'logAudit', data: getPayload() }, () => {
+  const payload = getPayload();
+  const andCopy = $('log-and-copy').checked;
+
+  saveRecord(payload);
+
+  chrome.runtime.sendMessage({ action: 'logAudit', data: payload }, async () => {
     if (chrome.runtime.lastError) {
-      output.style.color = 'red';
+      output.className = 'output-box error';
       output.textContent = '❌ Error: ' + chrome.runtime.lastError.message;
       return;
     }
-    output.style.color = 'green';
-    output.textContent = '✅ Sent to Slack!';
+
+    if (andCopy) {
+      await copyPayload(payload);
+      output.className = 'output-box success';
+      output.textContent = '✅ Logged and copied!';
+    } else {
+      output.className = 'output-box success';
+      output.textContent = '✅ Logged to record!';
+    }
   });
 });
 
 // ── Copy to clipboard ──────────────────────────────────────────────────────
 
-$('copy-btn').addEventListener('click', async () => {
-  if (!formValid) return;
-
-  const p = getPayload();
+async function copyPayload(p) {
   const fields = [
-    ['Alias',                                    '@' + aliasInput.value.trim()],
+    ['Alias',                                    '@' + (aliasInput.value.trim() || 'N/A')],
     ['Time of Audit',                            p.time_of_audit],
     ['Chamber Group',                            p.chamber_group],
     ['Chamber',                                  p.chamber],
@@ -222,6 +255,14 @@ $('copy-btn').addEventListener('click', async () => {
     'text/plain': new Blob([plain], { type: 'text/plain' }),
   })]);
 
-  output.style.color = '#333';
+  return plain;
+}
+
+$('copy-btn').addEventListener('click', async () => {
+  if (!formValid) return;
+  const payload = getPayload();
+  saveRecord(payload);
+  const plain = await copyPayload(payload);
+  output.className = 'output-box';
   output.textContent = plain;
 });
