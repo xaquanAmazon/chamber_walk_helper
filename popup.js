@@ -130,7 +130,7 @@ chrome.storage.local.get(['kteOptions', 'tempOptions', 'issueOptions'], (data) =
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   if (!tab.url.startsWith(TARGET_URL)) {
-    statusEl.textContent = 'Not on WORM Work Centers page.';
+    statusEl.innerHTML = 'Not on WORM Work Centers page. <a href="' + TARGET_URL + '" target="_blank">Open it</a>';
     return;
   }
 
